@@ -86,10 +86,11 @@ class EasyTabManagerApp {
     this.initTheme();
     this.bindEvents();
     
-    // Attempt to load from CSV database
-    this.initCsvSync().then(() => {
-      this.render();
-    });
+    // First immediate render
+    this.render();
+
+    // Now attempt to load from CSV database
+    this.initCsvSync();
   }
 
   // Check if Python local CSV server is active
@@ -102,6 +103,7 @@ class EasyTabManagerApp {
           this.isCsvServer = true;
           this.updateStorageIndicator(true);
           await this.loadFromCsv();
+          this.render();
           return;
         }
       }
