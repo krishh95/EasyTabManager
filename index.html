@@ -63,15 +63,22 @@
         </div>
       </div>
 
-      <!-- Center Search -->
-      <div class="flex-1 max-w-md relative hidden sm:block">
-        <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-        <input 
-          id="globalSearchInput" 
-          type="text" 
-          placeholder="Search bookmarks across all spaces... (Press /)" 
-          class="w-full bg-slate-100 dark:bg-slate-800/80 border border-transparent focus:border-brand-500 text-sm rounded-xl pl-10 pr-4 py-2 outline-none transition placeholder-slate-400"
-        />
+      <!-- Center Search & Source Status -->
+      <div class="flex-1 max-w-md relative hidden sm:flex items-center gap-2">
+        <div class="relative flex-1">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input 
+            id="globalSearchInput" 
+            type="text" 
+            placeholder="Search bookmarks across all spaces... (Press /)" 
+            class="w-full bg-slate-100 dark:bg-slate-800/80 border border-transparent focus:border-brand-500 text-sm rounded-xl pl-10 pr-4 py-2 outline-none transition placeholder-slate-400"
+          />
+        </div>
+        <!-- CSV / DB Live Indicator Badge -->
+        <div id="storageModeBadge" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80 whitespace-nowrap" title="Database status">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="storageModeText">CSV Sync Active</span>
+        </div>
       </div>
 
       <!-- Action Buttons -->

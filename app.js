@@ -75,7 +75,9 @@ const COLOR_PALETTE = ['#4f46e5', '#059669', '#d97706', '#dc2626', '#8b5cf6', '#
 
 class EasyTabManagerApp {
   constructor() {
-    this.data = this.loadData();
+    this.serverUrl = window.location.origin;
+    this.isCsvServer = false;
+    this.data = this.loadLocalFallback();
     this.selectedColor = COLOR_PALETTE[0];
     this.searchQuery = '';
     this.activeFilter = 'all';
@@ -83,11 +85,174 @@ class EasyTabManagerApp {
     this.initElements();
     this.initTheme();
     this.bindEvents();
-    this.render();
+    
+    // Attempt to load from CSV database
+    this.initCsvSync().then(() => {
+      this.render();
+    });
   }
 
-  // Load state from localStorage or fallback
-  loadData() {
+  // Check if Python local CSV server is active
+  async initCsvSync() {
+    try {
+      const res = await fetch('/api/status', { cache: 'no-store' });
+      if (res.ok) {
+        const info = await res.json();
+        if (info.mode === 'csv_server') {
+          this.isCsvServer = true;
+          this.updateStorageIndicator(true);
+          await this.loadFromCsv();
+          return;
+        }
+      }
+    } catch {
+      // Running as static file or GitHub Pages without local python backend
+    }
+
+    // Try fetching static data/spaces.csv and data/bookmarks.csv if on GitHub Pages
+    const staticLoaded = await this.tryLoadStaticCsv();
+    if (!staticLoaded) {
+      this.updateStorageIndicator(false);
+      this.render();
+    }
+  }
+
+  // Load from Python API (reading CSV files)
+  async loadFromCsv() {
+    try {
+      const res = await fetch('/api/data', { cache: 'no-store' });
+      if (res.ok) {
+        const payload = await res.json();
+        if (payload.spaces && payload.spaces.length > 0) {
+          this.data.spaces = payload.spaces;
+          this.data.bookmarks = payload.bookmarks || [];
+          if (!this.data.spaces.some(s => s.id === this.data.activeSpaceId)) {
+            this.data.activeSpaceId = this.data.spaces[0].id;
+          }
+          this.saveLocalFallback();
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load CSV from server:', err);
+    }
+  }
+
+  // Parse CSV string into array of objects
+  parseCsv(text) {
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.trim());
+    const result = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.trim()) continue;
+      // Handle commas inside quotes or regular split
+      const values = [];
+      let inQuotes = false;
+      let curr = '';
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+        if (char === '"' || char === "'") {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(curr.trim());
+          curr = '';
+        } else {
+          curr += char;
+        }
+      }
+      values.push(curr.trim());
+
+      const obj = {};
+      headers.forEach((h, idx) => {
+        let val = values[idx] || '';
+        // unquote
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        obj[h] = val;
+      });
+      result.push(obj);
+    }
+    return result;
+  }
+
+  // For GitHub Pages: load data/spaces.csv and data/bookmarks.csv statically
+  async tryLoadStaticCsv() {
+    try {
+      const [resSpaces, resBookmarks] = await Promise.all([
+        fetch('data/spaces.csv', { cache: 'no-store' }),
+        fetch('data/bookmarks.csv', { cache: 'no-store' })
+      ]);
+
+      if (resSpaces.ok && resBookmarks.ok) {
+        const spacesText = await resSpaces.text();
+        const bookmarksText = await resBookmarks.text();
+
+        const spaces = this.parseCsv(spacesText);
+        const bookmarks = this.parseCsv(bookmarksText);
+
+        if (spaces.length > 0) {
+          this.data.spaces = spaces;
+          this.data.bookmarks = bookmarks;
+          if (!this.data.spaces.some(s => s.id === this.data.activeSpaceId)) {
+            this.data.activeSpaceId = this.data.spaces[0].id;
+          }
+          this.updateStorageIndicator(true, 'CSV File Mode');
+          this.render();
+          return true;
+        }
+      }
+    } catch {
+      // Fallback to localStorage
+    }
+    return false;
+  }
+
+  // Save changes to CSV database
+  async saveData() {
+    this.saveLocalFallback();
+
+    if (this.isCsvServer) {
+      try {
+        const res = await fetch('/api/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            spaces: this.data.spaces,
+            bookmarks: this.data.bookmarks
+          })
+        });
+        if (res.ok) {
+          this.showToast('Saved to data/*.csv (Ready to git push)');
+          return;
+        }
+      } catch (err) {
+        console.warn('Could not post to /api/data:', err);
+      }
+    }
+  }
+
+  updateStorageIndicator(isCsvActive, customLabel = null) {
+    if (!this.storageModeBadge || !this.storageModeText) return;
+    if (isCsvActive) {
+      this.storageModeBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/80 whitespace-nowrap';
+      this.storageModeBadge.title = 'Changes write directly to data/spaces.csv & data/bookmarks.csv on disk!';
+      this.storageModeText.textContent = customLabel || 'CSV Synced (Single Source of Truth)';
+      const dot = this.storageModeBadge.querySelector('span');
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+    } else {
+      this.storageModeBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-medium border bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80 whitespace-nowrap';
+      this.storageModeBadge.title = 'Run start_server.bat to enable live 2-way disk CSV sync.';
+      this.storageModeText.textContent = 'Local Storage Mode';
+      const dot = this.storageModeBadge.querySelector('span');
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-500';
+    }
+  }
+
+  // Fallback to localStorage
+  loadLocalFallback() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
       if (stored) {
@@ -102,13 +267,11 @@ class EasyTabManagerApp {
     return JSON.parse(JSON.stringify(DEFAULT_DATA));
   }
 
-  // Save state to localStorage
-  saveData() {
+  saveLocalFallback() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
     } catch (e) {
       console.error('Error saving to localStorage:', e);
-      this.showToast('Storage error: browser storage may be full');
     }
   }
 
@@ -128,9 +291,11 @@ class EasyTabManagerApp {
     this.btnRemoveAllDead = document.getElementById('btnRemoveAllDead');
     this.btnDismissDeadAlert = document.getElementById('btnDismissDeadAlert');
 
-    // Search Inputs
+    // Search Inputs & Badges
     this.globalSearchInput = document.getElementById('globalSearchInput');
     this.mobileSearchInput = document.getElementById('mobileSearchInput');
+    this.storageModeBadge = document.getElementById('storageModeBadge');
+    this.storageModeText = document.getElementById('storageModeText');
 
     // Containers
     this.spacesTabsContainer = document.getElementById('spacesTabsContainer');

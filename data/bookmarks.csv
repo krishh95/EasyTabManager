@@ -1,0 +1,6 @@
+id,spaceId,name,url,createdAt,status
+bm_1,space_work,Google Drive,https://drive.google.com/drive/u/0/,1731250000000,unknown
+bm_2,space_work,Gmail,https://mail.google.com/mail/u/0/,1731250001000,unknown
+bm_3,space_work,GitHub,https://github.com,1731250002000,unknown
+bm_4,space_personal,YouTube,https://www.youtube.com,1731250003000,unknown
+bm_5,space_personal,Reddit,https://www.reddit.com,1731250004000,unknown
