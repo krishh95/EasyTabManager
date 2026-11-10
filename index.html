@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EasyTabManager - Visual Tab & Bookmark Manager</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #334155;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-white/90 dark:bg-slate-900/90 backdrop-blur sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <!-- App Brand -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+          <i data-lucide="layers" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            EasyTabManager
+            <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900/60 dark:text-brand-300">Hub</span>
+          </h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Multi-Account Bookmark & Session Manager</p>
+        </div>
+      </div>
+
+      <!-- Center Search -->
+      <div class="flex-1 max-w-md relative hidden sm:block">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input 
+          id="globalSearchInput" 
+          type="text" 
+          placeholder="Search bookmarks across all spaces... (Press /)" 
+          class="w-full bg-slate-100 dark:bg-slate-800/80 border border-transparent focus:border-brand-500 text-sm rounded-xl pl-10 pr-4 py-2 outline-none transition placeholder-slate-400"
+        />
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2">
+        <!-- Add Bookmark Button -->
+        <button 
+          id="btnOpenAddBookmark" 
+          class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm shadow-sm transition shadow-brand-600/30"
+          title="Add a new bookmark"
+        >
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span class="hidden md:inline">Add Bookmark</span>
+        </button>
+
+        <!-- Check Dead Links Button -->
+        <button 
+          id="btnCheckHealth" 
+          class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm transition"
+          title="Check link status for broken or dead URLs"
+        >
+          <i data-lucide="activity" class="w-4 h-4 text-emerald-500"></i>
+          <span class="hidden lg:inline">Check Health</span>
+        </button>
+
+        <!-- More Actions Dropdown (Export, Import, Theme) -->
+        <div class="relative">
+          <button 
+            id="btnToggleMore" 
+            class="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition"
+            title="Options and Backups"
+          >
+            <i data-lucide="settings-2" class="w-4 h-4"></i>
+          </button>
+          
+          <div 
+            id="menuMore" 
+            class="hidden absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-1.5 z-50 text-sm"
+          >
+            <button id="btnExportJson" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition">
+              <i data-lucide="download" class="w-4 h-4 text-slate-400"></i>
+              Export Backup (JSON)
+            </button>
+            <label class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left cursor-pointer transition">
+              <i data-lucide="upload" class="w-4 h-4 text-slate-400"></i>
+              Import Backup
+              <input id="fileImportJson" type="file" accept=".json" class="hidden" />
+            </label>
+            <div class="my-1 border-t border-slate-200 dark:border-slate-800"></div>
+            <button id="btnToggleDarkMode" class="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition">
+              <span class="flex items-center gap-2.5">
+                <i data-lucide="moon" class="w-4 h-4 text-slate-400"></i>
+                Dark Mode
+              </span>
+              <span id="themeIndicator" class="text-xs text-slate-400">Off</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile Search Bar -->
+  <div class="px-4 py-2 sm:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+    <div class="relative">
+      <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+      <input 
+        id="mobileSearchInput" 
+        type="text" 
+        placeholder="Search bookmarks..." 
+        class="w-full bg-slate-100 dark:bg-slate-800 text-sm rounded-xl pl-9 pr-4 py-2 outline-none"
+      />
+    </div>
+  </div>
+
+  <!-- Spaces Navigation Bar (Tabs for Accounts/Workspaces) -->
+  <div class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-16 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+      <!-- Horizontal Scrollable Spaces Tabs -->
+      <div id="spacesTabsContainer" class="flex items-center gap-1.5 overflow-x-auto py-2.5 no-scrollbar scroll-smooth flex-1">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Add Space Button -->
+      <div class="flex-shrink-0 pl-2 border-l border-slate-200 dark:border-slate-800 py-1">
+        <button 
+          id="btnOpenAddSpace" 
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition"
+          title="Create a new Space / Account Tab"
+        >
+          <i data-lucide="folder-plus" class="w-3.5 h-3.5 text-brand-600 dark:text-brand-400"></i>
+          <span>New Space</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Active Space Info Banner -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-200 dark:border-slate-800">
+      <div>
+        <div class="flex items-center gap-3">
+          <h2 id="activeSpaceTitle" class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Loading...</h2>
+          <span id="activeSpaceEmailBadge" class="hidden text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"></span>
+        </div>
+        <p id="activeSpaceDescription" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"></p>
+      </div>
+
+      <!-- Space Actions -->
+      <div class="flex items-center gap-2 self-start sm:self-auto">
+        <button 
+          id="btnOpenAllInSpace" 
+          class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition"
+          title="Open all bookmarks in this space in new tabs"
+        >
+          <i data-lucide="external-link" class="w-3.5 h-3.5 text-brand-500"></i>
+          Open All Tabs
+        </button>
+        <button 
+          id="btnEditActiveSpace" 
+          class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition"
+          title="Edit Space details"
+        >
+          <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+        </button>
+        <button 
+          id="btnDeleteActiveSpace" 
+          class="p-1.5 rounded-lg border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 transition"
+          title="Delete this Space"
+        >
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Dead Link Clean Banner (Visible when dead links detected) -->
+    <div id="deadLinksAlert" class="hidden mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-amber-900 dark:text-amber-200" id="deadLinksAlertText">Dead links detected!</p>
+          <p class="text-xs text-amber-700 dark:text-amber-400">Some of your bookmarks appear unreachable or returned error codes.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnRemoveAllDead" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition shadow-xs">
+          Remove Dead Links
+        </button>
+        <button id="btnDismissDeadAlert" class="p-1.5 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg text-xs">
+          Dismiss
+        </button>
+      </div>
+    </div>
+
+    <!-- Bookmarks Grid -->
+    <div id="bookmarksGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <!-- Bookmark cards injected here dynamically -->
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="hidden text-center py-20 px-4">
+      <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+        <i data-lucide="bookmark" class="w-8 h-8"></i>
+      </div>
+      <h3 class="text-base font-semibold text-slate-800 dark:text-slate-200">No bookmarks in this space yet</h3>
+      <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1 mb-5">
+        Add your web apps, Google Docs, dashboards, or links. We will automatically grab the logo and favicon!
+      </p>
+      <button 
+        onclick="document.getElementById('btnOpenAddBookmark').click()" 
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-medium text-xs shadow-md transition"
+      >
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+        Add Your First Bookmark
+      </button>
+    </div>
+  </main>
+
+  <!-- Health Check Progress Modal -->
+  <div id="healthCheckModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center">
+      <div class="w-12 h-12 mx-auto mb-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+        <i data-lucide="activity" class="w-6 h-6 animate-pulse"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900 dark:text-white" id="healthModalTitle">Checking Bookmark Health</h3>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4" id="healthModalDesc">Pinging links to check if they are reachable...</p>
+      
+      <!-- Progress Bar -->
+      <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mb-3 overflow-hidden">
+        <div id="healthProgressBar" class="bg-emerald-500 h-2 rounded-full transition-all duration-300 w-0"></div>
+      </div>
+      <p class="text-xs font-mono text-slate-400" id="healthProgressText">0 / 0 links tested</p>
+
+      <div id="healthSummary" class="hidden mt-4 text-xs text-left bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl space-y-1">
+        <p class="text-emerald-600 dark:text-emerald-400">✓ Alive: <span id="healthAliveCount">0</span></p>
+        <p class="text-red-600 dark:text-red-400">✗ Dead / Unreachable: <span id="healthDeadCount">0</span></p>
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <button id="btnCloseHealthModal" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Popup Blocker / Open All Tabs Guide Modal -->
+  <div id="popupBlockerModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 text-center animate-fade-in">
+      <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+        <i data-lucide="shield-alert" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900 dark:text-white">Allow Pop-ups in Chrome</h3>
+      <p class="text-xs text-slate-600 dark:text-slate-300 mt-2 text-left leading-relaxed">
+        Google Chrome by default blocks websites from opening multiple tabs at once to protect against spam pop-ups.
+      </p>
+      
+      <div class="mt-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 text-left text-xs space-y-2">
+        <p class="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+          <span class="w-4 h-4 rounded-full bg-brand-600 text-white flex items-center justify-center text-[10px]">1</span>
+          Look at your Chrome address bar (URL bar).
+        </p>
+        <p class="text-slate-600 dark:text-slate-400 pl-5">
+          Click the small <strong>"Pop-up blocked" icon</strong> (<span class="font-mono text-red-500">🚫</span>) on the far right of the address bar.
+        </p>
+        <p class="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+          <span class="w-4 h-4 rounded-full bg-brand-600 text-white flex items-center justify-center text-[10px]">2</span>
+          Select <em>"Always allow pop-ups and redirects from this site"</em>.
+        </p>
+        <p class="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+          <span class="w-4 h-4 rounded-full bg-brand-600 text-white flex items-center justify-center text-[10px]">3</span>
+          Click Done, then click <strong>"Open All Tabs"</strong> again!
+        </p>
+      </div>
+
+      <div class="mt-5 flex items-center justify-end gap-2">
+        <button id="btnClosePopupModal" class="px-5 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white transition">
+          Got It!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Bookmark Modal -->
+  <div id="modalBookmark" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-fade-in">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+            <i data-lucide="bookmark-plus" class="w-4 h-4"></i>
+          </div>
+          <h3 class="font-bold text-base text-slate-900 dark:text-white" id="modalBookmarkTitle">Add Bookmark</h3>
+        </div>
+        <button id="btnCloseBookmarkModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="formBookmark" class="mt-4 space-y-4">
+        <input type="hidden" id="inputBookmarkId" />
+
+        <!-- URL Input -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            Website URL <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <input 
+              id="inputBookmarkUrl" 
+              type="text" 
+              required 
+              placeholder="e.g. google.com or https://drive.google.com/drive/u/1/" 
+              class="w-full bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 transition"
+            />
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Logo and icon will be automatically fetched from this address.</p>
+        </div>
+
+        <!-- Name Input -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            Site Name <span class="text-red-500">*</span>
+          </label>
+          <input 
+            id="inputBookmarkName" 
+            type="text" 
+            required 
+            placeholder="e.g. Google Drive, Gmail, Jira" 
+            class="w-full bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 transition"
+          />
+        </div>
+
+        <!-- Target Space Selection -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            Assign to Space / Account
+          </label>
+          <select 
+            id="selectBookmarkSpace" 
+            class="w-full bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 transition"
+          >
+            <!-- Injected dynamically -->
+          </select>
+        </div>
+
+        <!-- Live Logo Preview -->
+        <div class="pt-2 pb-1 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+            <img id="bookmarkPreviewLogo" src="" alt="" class="w-6 h-6 object-contain hidden" />
+            <i id="bookmarkPreviewFallback" data-lucide="globe" class="w-5 h-5 text-slate-400"></i>
+          </div>
+          <div>
+            <p class="text-xs font-medium text-slate-700 dark:text-slate-200">Auto-detected Icon Preview</p>
+            <p class="text-[11px] text-slate-400">Updates automatically as you type the URL</p>
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button 
+            type="button" 
+            id="btnCancelBookmarkModal" 
+            class="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            class="px-5 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-sm transition"
+          >
+            Save Bookmark
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Space Modal -->
+  <div id="modalSpace" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-fade-in">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <i data-lucide="folder-plus" class="w-4 h-4"></i>
+          </div>
+          <h3 class="font-bold text-base text-slate-900 dark:text-white" id="modalSpaceTitle">Create New Space</h3>
+        </div>
+        <button id="btnCloseSpaceModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="formSpace" class="mt-4 space-y-4">
+        <input type="hidden" id="inputSpaceId" />
+
+        <!-- Space Name -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            Space Name <span class="text-red-500">*</span>
+          </label>
+          <input 
+            id="inputSpaceName" 
+            type="text" 
+            required 
+            placeholder="e.g. Work, Personal, Freelance" 
+            class="w-full bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 transition"
+          />
+        </div>
+
+        <!-- Google Email Tag -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            Google Account Email (Optional)
+          </label>
+          <input 
+            id="inputSpaceEmail" 
+            type="email" 
+            placeholder="e.g. a@gmail.com or work@company.com" 
+            class="w-full bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-brand-500 transition"
+          />
+          <p class="text-[11px] text-slate-400 mt-1">Helps you separate workspaces per Google account.</p>
+        </div>
+
+        <!-- Color Picker / Theme for Space -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+            Space Accent Color
+          </label>
+          <div class="flex items-center gap-2" id="spaceColorOptions">
+            <!-- Radio color buttons -->
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button 
+            type="button" 
+            id="btnCancelSpaceModal" 
+            class="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit" 
+            class="px-5 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-sm transition"
+          >
+            Save Space
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastNotification" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-2 px-4 py-3 rounded-2xl bg-slate-900 text-white text-xs shadow-xl dark:bg-white dark:text-slate-900 font-medium">
+    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toastMessage">Done</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="mt-auto border-t border-slate-200 dark:border-slate-800 py-4 text-center text-xs text-slate-400">
+    <p>EasyTabManager &bull; Ready for GitHub Pages &bull; Stores your bookmarks 100% locally in your browser</p>
+  </footer>
+
+  <!-- Application Script -->
+  <script src="app.js"></script>
+</body>
+</html>
